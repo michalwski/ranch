@@ -140,7 +140,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal.
 
 -spec remove_process(key(), reference(), pid(), Monitors)
-	-> Monitors when Monitors::monitors() .
+	-> Monitors.
 remove_process(Key = {listener, Ref}, MonitorRef, Pid, Monitors) ->
 	true = ets:delete(?TAB, Key),
 	true = ets:delete(?TAB, {acceptors, Ref}),

@@ -122,7 +122,7 @@ set_protocol_options(Ref, ProtoOpts) ->
 %% This accumulator can be used to set default options that should never
 %% be overriden.
 -spec filter_options([{atom(), any()}], [atom()], Acc)
-	-> Acc when Acc :: [any()].
+	-> Acc.
 filter_options([], _, Acc) ->
 	Acc;
 filter_options([Opt = {Key, _}|Tail], AllowedKeys, Acc) ->
@@ -133,7 +133,7 @@ filter_options([Opt = {Key, _}|Tail], AllowedKeys, Acc) ->
 
 %% @doc Add an option to a list, but only if it wasn't previously set.
 -spec set_option_default(Opts, atom(), any())
-	-> Opts when Opts :: [{atom(), any()}].
+	-> Opts.
 set_option_default(Opts, Key, Value) ->
 	case lists:keymember(Key, 1, Opts) of
 		true -> Opts;

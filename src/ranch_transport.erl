@@ -15,16 +15,22 @@
 %% @private
 -module(ranch_transport).
 
--type socket() :: any().
--type opts() :: any().
+-export([behaviour_info/1]).
 
+%-type socket() :: any().
+%-type opts() :: any().
+
+behaviour_info(callbacks) ->
+[
 %% Name of the transport.
--callback name() -> atom().
+{name, 0},
+%-callback name() -> atom().
 
 %% @todo -callback caps(secure | sendfile) -> boolean().
 
 %% Atoms used to identify messages in {active, once | true} mode.
--callback messages() -> {OK::atom(), Closed::atom(), Error::atom()}.
+{messages,0},
+% -callback messages() -> {OK::atom(), Closed::atom(), Error::atom()}.
 
 %% Listen for connections on the given port number.
 %%
@@ -38,40 +44,51 @@
 %% sockname/1 on the listening socket. If you are using Ranch's
 %% listener API, then this port number can obtained through
 %% ranch:get_port/1 instead.
--callback listen(opts()) -> {ok, socket()} | {error, atom()}.
+{listen,1},
+% -callback listen(opts()) -> {ok, socket()} | {error, atom()}.
 
 %% Accept connections with the given listening socket.
--callback accept(socket(), timeout())
-	-> {ok, socket()} | {error, closed | timeout | atom() | tuple()}.
+{accept,2},
+% -callback accept(socket(), timeout())
+%	 -> {ok, socket()} | {error, closed | timeout | atom() | tuple()}.
 
 %% Experimental. Open a connection to the given host and port number.
--callback connect(string(), inet:port_number(), opts())
-	-> {ok, socket()} | {error, atom()}.
+{connect,3},
+% -callback connect(string(), inet:port_number(), opts())
+% 	-> {ok, socket()} | {error, atom()}.
 
 %% Receive data from a socket in passive mode.
--callback recv(socket(), non_neg_integer(), timeout())
-	-> {ok, any()} | {error, closed | timeout | atom()}.
+{recv,3},
+% -callback recv(socket(), non_neg_integer(), timeout())
+% 	-> {ok, any()} | {error, closed | timeout | atom()}.
 
 %% Send data on a socket.
--callback send(socket(), iodata()) -> ok | {error, atom()}.
+{send,2},
+% -callback send(socket(), iodata()) -> ok | {error, atom()}.
 
 %% Set options on the given socket.
--callback setopts(socket(), opts()) -> ok | {error, atom()}.
+{setopts,2},
+% -callback setopts(socket(), opts()) -> ok | {error, atom()}.
 
 %% Give control of the socket to a new process.
 %%
 %% Must be called from the process currently controlling the socket,
 %% otherwise an {error, not_owner} tuple will be returned.
--callback controlling_process(socket(), pid())
-	-> ok | {error, closed | not_owner | atom()}.
+{controlling_process,2},
+% -callback controlling_process(socket(), pid())
+% 	-> ok | {error, closed | not_owner | atom()}.
 
 %% Return the remote address and port of the connection.
--callback peername(socket())
-	-> {ok, {inet:ip_address(), inet:port_number()}} | {error, atom()}.
+{peername,1},
+% -callback peername(socket())
+% 	-> {ok, {inet:ip_address(), inet:port_number()}} | {error, atom()}.
 
 %% Return the local address and port of the connection.
--callback sockname(socket())
-	-> {ok, {inet:ip_address(), inet:port_number()}} | {error, atom()}.
+{sockname,1},
+% -callback sockname(socket())
+% 	-> {ok, {inet:ip_address(), inet:port_number()}} | {error, atom()}.
 
 %% Close the given socket.
--callback close(socket()) -> ok.
+{close,1}
+% -callback close(socket()) -> ok.
+].
