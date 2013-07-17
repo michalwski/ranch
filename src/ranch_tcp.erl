@@ -27,11 +27,20 @@
 -export([connect/3]).
 -export([recv/3]).
 -export([send/2]).
+-export([sendfile/2]).
 -export([setopts/2]).
 -export([controlling_process/2]).
 -export([peername/1]).
 -export([sockname/1]).
 -export([close/1]).
+
+-type opts() :: [{backlog, non_neg_integer()}
+	| {ip, inet:ip_address()}
+	| {nodelay, boolean()}
+	| {port, inet:port_number()}
+	| {raw, non_neg_integer(), non_neg_integer(),
+		non_neg_integer() | binary()}].
+-export_type([opts/0]).
 
 %% @doc Name of this transport, <em>tcp</em>.
 name() -> tcp.
@@ -61,15 +70,13 @@ messages() -> {tcp, tcp_closed, tcp_error}.
 %% ranch:get_port/1 instead.
 %%
 %% @see gen_tcp:listen/2
--spec listen([{backlog, non_neg_integer()} | {ip, inet:ip_address()}
-	| {nodelay, boolean()} | {port, inet:port_number()}])
-	-> {ok, inet:socket()} | {error, atom()}.
+-spec listen(opts()) -> {ok, inet:socket()} | {error, atom()}.
 listen(Opts) ->
 	Opts2 = ranch:set_option_default(Opts, backlog, 1024),
 	%% We set the port to 0 because it is given in the Opts directly.
 	%% The port in the options takes precedence over the one in the
 	%% first argument.
-	gen_tcp:listen(0, ranch:filter_options(Opts2, [backlog, ip, nodelay, port],
+	gen_tcp:listen(0, ranch:filter_options(Opts2, [backlog, ip, nodelay, port, raw],
 		[binary, {active, false}, {packet, raw},
 			{reuseaddr, true}, {nodelay, true}])).
 
@@ -83,9 +90,10 @@ accept(LSocket, Timeout) ->
 %% @private Experimental. Open a connection to the given host and port number.
 %% @see gen_tcp:connect/3
 %% @todo Probably filter Opts?
--spec connect(string(), inet:port_number(), any())
+-spec connect(inet:ip_address() | inet:hostname(),
+	inet:port_number(), any())
 	-> {ok, inet:socket()} | {error, atom()}.
-connect(Host, Port, Opts) when is_list(Host), is_integer(Port) ->
+connect(Host, Port, Opts) when is_integer(Port) ->
 	gen_tcp:connect(Host, Port,
 		Opts ++ [binary, {active, false}, {packet, raw}]).
 
@@ -98,9 +106,29 @@ recv(Socket, Length, Timeout) ->
 
 %% @doc Send data on a socket.
 %% @see gen_tcp:send/2
--spec send(inet:socket(), iolist()) -> ok | {error, atom()}.
+-spec send(inet:socket(), iodata()) -> ok | {error, atom()}.
 send(Socket, Packet) ->
 	gen_tcp:send(Socket, Packet).
+
+%% @doc Send a file on a socket.
+%%
+%% This is the optimal way to send files using TCP. It uses a syscall
+%% which means there is no context switch between opening the file
+%% and writing its contents on the socket.
+%%
+%% @see file:sendfile/2
+-spec sendfile(inet:socket(), file:name())
+	-> {ok, non_neg_integer()} | {error, atom()}.
+sendfile(Socket, Filename) ->
+	try file:sendfile(Filename, Socket) of
+		Result -> Result
+	catch
+		error:{badmatch, {error, enotconn}} ->
+			%% file:sendfile/2 might fail by throwing a {badmatch, {error, enotconn}}
+			%% this is because its internal implementation fails with a badmatch in
+			%% prim_file:sendfile/10 if the socket is not connected.
+			{error, closed}
+	end.
 
 %% @doc Set options on the given socket.
 %% @see inet:setopts/2

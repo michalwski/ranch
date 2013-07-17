@@ -28,21 +28,21 @@ When starting a listener, a number of different settings are required:
  *  A protocol handler and its associated options.
 
 Ranch includes both TCP and SSL transport handlers, respectively
-```ranch_tcp``` and ```ranch_ssl```.
+`ranch_tcp` and `ranch_ssl`.
 
-A listener can be started by calling the ```ranch:start_listener/6```
-function. Before doing so however, you must ensure that the ```ranch```
+A listener can be started by calling the `ranch:start_listener/6`
+function. Before doing so however, you must ensure that the `ranch`
 application is started.
 
-To start the ```ranch``` application:
+To start the `ranch` application:
 
 ``` erlang
 ok = application:start(ranch).
 ```
 
-You are then ready to start a listener. Let's call it ```tcp_echo```. It will
+You are then ready to start a listener. Let's call it `tcp_echo`. It will
 have a pool of 100 acceptors, use a TCP transport and forward connections
-to the ```echo_protocol``` handler.
+to the `echo_protocol` handler.
 
 ``` erlang
 {ok, _} = ranch:start_listener(tcp_echo, 100,
@@ -51,8 +51,8 @@ to the ```echo_protocol``` handler.
 ).
 ```
 
-You can try this out by compiling and running the ```tcp_echo``` example in the
-examples directory. To do so, open a shell in the ```examples/tcp_echo/```
+You can try this out by compiling and running the `tcp_echo` example in the
+examples directory. To do so, open a shell in the `examples/tcp_echo/`
 directory and run the following commands:
 
 ```
@@ -63,8 +63,8 @@ Listening on port 5555
 
 You can then connect to it using telnet and see the echo server reply
 everything you send to it. Then when you're done testing, you can use
-the ```Ctrl+]``` key to escape to the telnet command line and type
-```quit``` to exit.
+the `Ctrl+]` key to escape to the telnet command line and type
+`quit` to exit.
 
 ```
 % telnet localhost 5555
@@ -81,6 +81,17 @@ telnet> quit
 Connection closed.
 ```
 
+Default transport options
+-------------------------
+
+By default the socket will be set to return `binary` data, with the
+options `{active, false}`, `{packet, raw}`, `{reuseaddr, true}` set.
+These values can't be overriden when starting the listener, but
+they can be overriden using `Transport:setopts/2` in the protocol.
+
+It will also set `{backlog, 1024}` and `{nodelay, true}`, which
+can be overriden at listener startup.
+
 Listening on a random port
 --------------------------
 
@@ -88,8 +99,8 @@ You do not have to specify a specific port to listen on. If you give
 the port number 0, or if you omit the port number entirely, Ranch will
 start listening on a random port.
 
-You can retrieve this port number by calling ```ranch:get_port/1```. The
-argument is the name of the listener you gave in ```ranch:start_listener/6```.
+You can retrieve this port number by calling `ranch:get_port/1`. The
+argument is the name of the listener you gave in `ranch:start_listener/6`.
 
 ``` erlang
 {ok, _} = ranch:start_listener(tcp_echo, 100,
@@ -99,17 +110,42 @@ argument is the name of the listener you gave in ```ranch:start_listener/6```.
 Port = ranch:get_port(tcp_echo).
 ```
 
-Listening on a port =< 1024
----------------------------
+Listening on privileged ports
+-----------------------------
 
-This is currently not possible. We recommend the use of load balancing
-or NAT firewall rules if the need arise. Proxies can sometimes also be
-used although that's a less efficient solution.
+Some systems limit access to ports below 1024 for security reasons.
+This can easily be identified by an `{error, eacces}` error when trying
+to open a listening socket on such a port.
+
+The methods for listening on privileged ports vary between systems,
+please refer to your system's documentation for more information.
+
+We recommend the use of port rewriting for systems with a single server,
+and load balancing for systems with multiple servers. Documenting these
+solutions is however out of the scope of this guide.
+
+Accepting connections on an existing socket
+-------------------------------------------
+
+If you want to accept connections on an existing socket, you can use the
+`socket` transport option, which should just be the relevant data returned
+from the connect function for the transport or the underlying socket library
+(`gen_tcp:connect`, `ssl:connect`). The accept function will then be
+called on the passed in socket. You should connect the socket in
+`{active, false}` mode, as well.
+
+Note, however, that because of a bug in SSL, you cannot change ownership of an
+SSL listen socket prior to R16. Ranch will catch the error thrown, but the
+owner of the SSL socket will remain as whatever process created the socket.
+However, this will not affect accept behaviour unless the owner process dies,
+in which case the socket is closed. Therefore, to use this feature with SSL
+with an erlang release prior to R16, ensure that the SSL socket is opened in a
+persistant process.
 
 Limiting the number of concurrent connections
 ---------------------------------------------
 
-The ```max_connections``` transport option allows you to limit the number
+The `max_connections` transport option allows you to limit the number
 of concurrent connections. It defaults to 1024. Its purpose is to
 prevent your system from being overloaded and ensuring all the
 connections are handled optimally.
@@ -121,7 +157,7 @@ connections are handled optimally.
 ).
 ```
 
-You can disable this limit by setting its value to the atom ```infinity```.
+You can disable this limit by setting its value to the atom `infinity`.
 
 ``` erlang
 {ok, _} = ranch:start_listener(tcp_echo, 100,
@@ -131,21 +167,31 @@ You can disable this limit by setting its value to the atom ```infinity```.
 ```
 
 You may not always want connections to be counted when checking for
-```max_connections```. For example you might have a protocol where both
+`max_connections`. For example you might have a protocol where both
 short-lived and long-lived connections are possible. If the long-lived
 connections are mostly waiting for messages, then they don't consume
 much resources and can safely be removed from the count.
 
 To remove the connection from the count, you must call the
-```ranch_listener:remove_connection/1``` from within the connection process,
-with the listener pid as the only argument.
+`ranch:remove_connection/1` from within the connection process,
+with the name of the listener as the only argument.
 
 ``` erlang
-ranch_listener:remove_connection(ListenerPid).
+ranch:remove_connection(Ref).
 ```
 
 As seen in the chapter covering protocols, this pid is received as the
-first argument of the protocol's ```start_link/4``` callback.
+first argument of the protocol's `start_link/4` callback.
+
+You can modify the `max_connections` value on a running listener by
+using the `ranch:set_max_connections/2` function, with the name of the
+listener as first argument and the new value as the second.
+
+``` erlang
+ranch:set_max_connections(tcp_echo, MaxConns).
+```
+
+The change will occur immediately.
 
 Upgrading
 ---------
@@ -153,7 +199,7 @@ Upgrading
 Ranch allows you to upgrade the protocol options. This takes effect
 immediately and for all subsequent connections.
 
-To upgrade the protocol options, call ```ranch:set_protocol_options/2```
+To upgrade the protocol options, call `ranch:set_protocol_options/2`
 with the name of the listener as first argument and the new options
 as the second.
 
@@ -164,7 +210,7 @@ ranch:set_protocol_options(tcp_echo, NewOpts).
 All future connections will use the new options.
 
 You can also retrieve the current options similarly by
-calling ```ranch:get_protocol_options/1```.
+calling `ranch:get_protocol_options/1`.
 
 ``` erlang
 Opts = ranch:get_protocol_options(tcp_echo).

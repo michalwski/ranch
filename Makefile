@@ -2,49 +2,17 @@
 
 PROJECT = ranch
 
-DIALYZER = dialyzer
-REBAR = rebar
+# Dependencies.
 
-all: app
+TEST_DEPS = ct_helper
+dep_ct_helper = https://github.com/extend/ct_helper.git master
 
-# Application.
+# Options.
 
-deps:
-	@$(REBAR) get-deps
+COMPILE_FIRST = ranch_transport
+CT_SUITES = acceptor
+PLT_APPS = crypto public_key ssl
 
-app: deps
-	@$(REBAR) compile
+# Standard targets.
 
-clean:
-	@$(REBAR) clean
-	rm -f test/*.beam
-	rm -f erl_crash.dump
-
-docs: clean-docs
-	@$(REBAR) doc skip_deps=true
-
-clean-docs:
-	rm -f doc/*.css
-	rm -f doc/*.html
-	rm -f doc/*.png
-	rm -f doc/edoc-info
-
-# Tests.
-
-tests: clean app eunit ct
-
-eunit:
-	@$(REBAR) -C rebar.tests.config eunit skip_deps=true
-
-ct:
-	@$(REBAR) -C rebar.tests.config ct skip_deps=true
-
-# Dialyzer.
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
-		--apps kernel stdlib sasl tools inets crypto public_key ssl
-
-dialyze:
-	@$(DIALYZER) --src src --plt .$(PROJECT).plt \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
+include erlang.mk
